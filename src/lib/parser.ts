@@ -1,5 +1,4 @@
 import type { VutCommand } from './types';
-import { SETTINGS_COMMAND_ID } from './builtins';
 
 export interface MatchResult {
   command: VutCommand;
@@ -59,7 +58,6 @@ export const buildSearchUrl = (urlTemplate: string, query: string): string =>
 /** One-line description of what running this result will do, for display. */
 export const describeAction = (result: MatchResult): string => {
   const { command, query } = result;
-  if (command.id === SETTINGS_COMMAND_ID) return 'Open the Vut settings window';
   switch (command.action.type) {
     case 'open_url':
       return command.action.url;
@@ -67,5 +65,7 @@ export const describeAction = (result: MatchResult): string => {
       return query ? `Search for "${query}"` : buildSearchUrl(command.action.urlTemplate, '{query}');
     case 'launch_app':
       return command.action.kind === 'uri' ? command.action.uri : command.action.default.command;
+    case 'open_settings':
+      return 'Open the Vut settings window';
   }
 };

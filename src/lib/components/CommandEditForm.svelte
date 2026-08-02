@@ -4,11 +4,12 @@
   // Flattens the nested `{ type, kind }` union into one selector value for
   // the form's radio group - simpler to bind a <select> to than a 2-level
   // discriminated union.
-  export type ActionKind = 'open_url' | 'search' | 'launch_uri' | 'launch_command';
+  export type ActionKind = 'open_url' | 'search' | 'launch_uri' | 'launch_command' | 'open_settings';
 
   export const actionKindOf = (action: CommandAction): ActionKind => {
     if (action.type === 'open_url') return 'open_url';
     if (action.type === 'search') return 'search';
+    if (action.type === 'open_settings') return 'open_settings';
     return action.kind === 'uri' ? 'launch_uri' : 'launch_command';
   };
 </script>
@@ -122,6 +123,8 @@
         return;
       }
       action = { type: 'launch_app', kind: 'uri', uri: launchUri.trim() };
+    } else if (kind === 'open_settings') {
+      action = { type: 'open_settings' };
     } else {
       const def = toSpec(defaultSpec.command, defaultArgsText);
       if (!def.command) {
@@ -177,6 +180,7 @@
         <option value="search">Search (URL template with {'{query}'})</option>
         <option value="launch_uri">Launch app via URI scheme</option>
         <option value="launch_command">Launch app via executable</option>
+        <option value="open_settings">Open Vut Settings</option>
       </select>
     </label>
 
@@ -197,6 +201,8 @@
         <input bind:value={launchUri} placeholder="spotify:" autocomplete="off" />
       </label>
       <p class="hint">Opened via the OS's registered handler for this scheme.</p>
+    {:else if kind === 'open_settings'}
+      <p class="hint">Opens this settings window. No additional configuration needed.</p>
     {:else}
       <div class="row two">
         <label>

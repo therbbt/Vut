@@ -32,6 +32,13 @@ pub enum CommandAction {
     Search { url_template: String },
     #[serde(rename = "launch_app")]
     LaunchApp(LaunchAppAction),
+    /// Opens Vut's own Settings window. A real command like any other -
+    /// editable/renamable/deletable in the Commands manager - rather than a
+    /// hardcoded frontend-only entry, so it needs no fields of its own: the
+    /// `type` tag alone is enough for the frontend to know to call
+    /// `show_settings` instead of the usual open_target/launch_app path.
+    #[serde(rename = "open_settings")]
+    OpenSettings,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -90,6 +97,16 @@ fn open_url(id: &str, keyword: &str, title: &str, url: &str) -> VutCommand {
     }
 }
 
+fn settings_command() -> VutCommand {
+    VutCommand {
+        id: "settings".to_string(),
+        keyword: "settings".to_string(),
+        title: "Settings".to_string(),
+        icon: Some("⚙️".to_string()),
+        action: CommandAction::OpenSettings,
+    }
+}
+
 // Ships as the fresh-install config so a new user immediately sees all
 // three action types working: a fixed URL, a {query} search template, and a
 // URI-scheme app launch.
@@ -115,6 +132,7 @@ pub fn default_config() -> VutConfig {
                     uri: "spotify:".to_string(),
                 }),
             },
+            settings_command(),
         ],
         settings: VutSettings {
             hotkey: crate::DEFAULT_HOTKEY.to_string(),
@@ -131,6 +149,19 @@ pub fn config_file_path(data_dir: &Path) -> PathBuf {
     data_dir.join(CONFIG_FILE)
 }
 
+/// Settings used to be a hardcoded frontend-only entry, never written to
+/// config.json (see the frontend's now-removed builtins.ts). Configs saved
+/// before it became a real command are missing it entirely - add it back
+/// once, on load, rather than leaving those users unable to reach Settings
+/// through search until they notice and add it themselves.
+fn ensure_settings_command(config: &mut VutConfig) -> bool {
+    if config.commands.iter().any(|c| matches!(c.action, CommandAction::OpenSettings)) {
+        return false;
+    }
+    config.commands.push(settings_command());
+    true
+}
+
 /// Reads config.json, seeding it with `default_config()` on first run or if
 /// the existing file fails to parse (rather than refusing to start - a
 /// hand-edited config.json with a typo shouldn't brick the launcher).
@@ -138,7 +169,12 @@ pub fn load(data_dir: &Path) -> VutConfig {
     let path = config_file_path(data_dir);
     match std::fs::read_to_string(&path) {
         Ok(raw) => match serde_json::from_str::<VutConfig>(&raw) {
-            Ok(config) => config,
+            Ok(mut config) => {
+                if ensure_settings_command(&mut config) {
+                    let _ = save(data_dir, &config);
+                }
+                config
+            }
             Err(err) => {
                 eprintln!("[vut] failed to parse {}: {err} - falling back to defaults", path.display());
                 let config = default_config();
@@ -178,5 +214,20 @@ mod tests {
             }
             other => panic!("expected Search action, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn ensure_settings_command_adds_it_once() {
+        let mut config = VutConfig {
+            commands: vec![open_url("example-yt", "yt", "YouTube", "https://youtube.com")],
+            settings: default_config().settings,
+        };
+
+        assert!(ensure_settings_command(&mut config), "should add it when missing");
+        assert_eq!(config.commands.len(), 2);
+        assert!(config.commands.iter().any(|c| matches!(c.action, CommandAction::OpenSettings)));
+
+        assert!(!ensure_settings_command(&mut config), "should be a no-op once present");
+        assert_eq!(config.commands.len(), 2);
     }
 }

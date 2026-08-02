@@ -5,7 +5,6 @@
   import { commands, settings, loadConfig, startConfigSync } from './lib/stores/configStore';
   import { matchCommands, describeAction, type MatchResult } from './lib/parser';
   import { runAction } from './lib/services/actionService';
-  import { BUILTIN_COMMANDS, SETTINGS_COMMAND_ID } from './lib/builtins';
   import type { VutSettings, VutCommand } from './lib/types';
 
   let query = '';
@@ -14,11 +13,7 @@
   let shellEl: HTMLDivElement | undefined;
   let running = false;
 
-  // Built-ins (currently just "Settings") are appended after the user's own
-  // commands so they never crowd out a user command with the same keyword
-  // prefix, but are still fully searchable by keyword/title through the
-  // exact same matching path as everything else.
-  $: baseResults = matchCommands(query, [...$commands, ...BUILTIN_COMMANDS]);
+  $: baseResults = matchCommands(query, $commands);
   // A keyword that matches nothing still isn't a dead end: falls back to
   // running the configured default-search command against the whole typed
   // input, same as if the user had typed its keyword directly.
@@ -44,11 +39,7 @@
     if (!result || running) return;
     running = true;
     try {
-      if (result.command.id === SETTINGS_COMMAND_ID) {
-        await invoke('show_settings');
-      } else {
-        await runAction(result.command.action, result.query);
-      }
+      await runAction(result.command.action, result.query);
       query = '';
       await invoke('hide_window');
     } catch (err) {
