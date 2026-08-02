@@ -58,7 +58,30 @@
     }
   };
 
+  // Caps Lock is normally toggled ON as a side effect of triggering the
+  // Caps+Space hotkey (see setup notes), so left unhandled every letter
+  // typed right after summoning Vut would come out uppercase. Casing here
+  // is derived only from Shift, ignoring whatever Caps Lock happens to be
+  // doing - the query text should read the same regardless of Caps state.
+  const insertAtCursor = (char: string) => {
+    if (!inputEl) {
+      query += char;
+      return;
+    }
+    const start = inputEl.selectionStart ?? query.length;
+    const end = inputEl.selectionEnd ?? query.length;
+    query = query.slice(0, start) + char + query.slice(end);
+    void tick().then(() => {
+      inputEl?.setSelectionRange(start + 1, start + 1);
+    });
+  };
+
   const onKeydown = (event: KeyboardEvent) => {
+    if (/^[a-zA-Z]$/.test(event.key) && event.getModifierState('CapsLock')) {
+      event.preventDefault();
+      insertAtCursor(event.shiftKey ? event.key.toUpperCase() : event.key.toLowerCase());
+      return;
+    }
     if (event.key === 'Escape') {
       event.preventDefault();
       query = '';

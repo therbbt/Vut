@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { commands, settings, loadConfig, startConfigSync, saveCommands, saveSettings, configService } from './lib/stores/configStore';
   import { palettesForMode } from './lib/theme/palettes';
   import { HotkeyService, isValidHotkey } from './lib/services/hotkeyService';
@@ -90,16 +90,36 @@
     return key.length === 1 ? key.toUpperCase() : key;
   };
 
+  // If nothing arrives for a few seconds, the most likely explanation isn't
+  // a bug in this capture code - it's that the desktop environment (KDE's
+  // global shortcuts, GNOME's Activities key, etc.) already grabbed that
+  // combo at the compositor level and never forwarded the keystroke to us
+  // at all, so there's nothing here to catch or report an error for.
+  const STUCK_HINT_DELAY_MS = 3000;
+  let hotkeyStuckTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  let hotkeyHint = '';
+
   const startHotkeyCapture = () => {
     hotkeyRecording = true;
     hotkeyError = '';
+    hotkeyHint = '';
+    clearTimeout(hotkeyStuckTimeoutId);
+    hotkeyStuckTimeoutId = setTimeout(() => {
+      if (hotkeyRecording) {
+        hotkeyHint =
+          'Still waiting… if nothing happens when you press it, that combo is likely already claimed by a system shortcut (check your desktop’s keyboard shortcut settings) rather than a problem with Vut.';
+      }
+    }, STUCK_HINT_DELAY_MS);
   };
+
+  onDestroy(() => clearTimeout(hotkeyStuckTimeoutId));
 
   const onHotkeyCaptureKeydown = async (event: KeyboardEvent) => {
     if (!hotkeyRecording) return;
     event.preventDefault();
     if (event.key === 'Escape') {
       hotkeyRecording = false;
+      clearTimeout(hotkeyStuckTimeoutId);
       return;
     }
     if (REAL_MODIFIER_KEYS.has(event.key)) return;
@@ -113,6 +133,8 @@
     const accelerator = parts.join('+');
 
     hotkeyRecording = false;
+    hotkeyHint = '';
+    clearTimeout(hotkeyStuckTimeoutId);
     if (!isValidHotkey(accelerator)) {
       hotkeyError = 'Choose a combo with at least one modifier (Ctrl/Alt/Shift/Super) plus a key. CapsLock can’t be used.';
       return;
@@ -196,6 +218,7 @@
           {hotkeyRecording ? 'Press a key combo… (Esc to cancel)' : $settings.hotkey}
         </button>
         {#if hotkeyError}<p class="error">{hotkeyError}</p>{/if}
+        {#if hotkeyRecording && hotkeyHint}<p class="hint">{hotkeyHint}</p>{/if}
       </section>
 
       <section>
