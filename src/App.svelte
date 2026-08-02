@@ -16,8 +16,8 @@
 
   // Built-ins (currently just "Settings") are appended after the user's own
   // commands so they never crowd out a user command with the same keyword
-  // prefix in browse mode, but are still fully searchable by keyword/title
-  // through the exact same matching path as everything else.
+  // prefix, but are still fully searchable by keyword/title through the
+  // exact same matching path as everything else.
   $: baseResults = matchCommands(query, [...$commands, ...BUILTIN_COMMANDS]);
   // A keyword that matches nothing still isn't a dead end: falls back to
   // running the configured default-search command against the whole typed

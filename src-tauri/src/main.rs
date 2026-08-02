@@ -26,24 +26,6 @@ pub const DEFAULT_HOTKEY: &str = "Alt+Space";
 const MAIN_WINDOW_WIDTH: f64 = 640.0;
 /// Height of just the input bar, with no results showing.
 const MAIN_WINDOW_BASE_HEIGHT: f64 = 76.0;
-/// Kept in sync with the row/list layout in App.svelte's <style> - used to
-/// pre-compute the right window height for a fresh summon (see
-/// initial_main_window_height below) so the window opens at close to its
-/// final size instead of popping open small and visibly growing once the
-/// frontend measures and corrects it a frame later. The frontend still does
-/// its own precise DOM-measured resize as the user types (query changes the
-/// result count), this is only about the very first paint after a summon.
-const RESULT_ITEM_HEIGHT: f64 = 44.0;
-const MAX_VISIBLE_RESULTS: usize = 8;
-
-/// Every summon resets the query to empty (see the focus-gained handler in
-/// App.svelte), which shows every command in browse mode - so the settled
-/// height is fully determined by how many commands exist, which Rust
-/// already knows without waiting on the frontend.
-fn initial_main_window_height(command_count: usize) -> f64 {
-    let visible = command_count.min(MAX_VISIBLE_RESULTS);
-    MAIN_WINDOW_BASE_HEIGHT + (visible as f64) * RESULT_ITEM_HEIGHT
-}
 
 const REAL_MODIFIERS: [&str; 10] = [
     "ctrl", "control", "alt", "option", "shift", "super", "cmd", "command", "meta", "win",
@@ -82,28 +64,31 @@ static WINDOW_SHOWN: AtomicBool = AtomicBool::new(false);
 fn hide_main_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.hide();
+        // Drop back out of the taskbar while hidden - it should only occupy
+        // a taskbar slot for the moment it's actually summoned, not linger
+        // there while sitting hidden in the tray.
+        let _ = window.set_skip_taskbar(true);
         WINDOW_SHOWN.store(false, Ordering::SeqCst);
     }
 }
 
 fn show_main_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        // Reset to the size this summon will settle at (see
-        // initial_main_window_height) and re-center before every summon,
-        // regardless of whatever size it grew to - or window-state restored
-        // at launch - last time it was open. The input bar should always
-        // reappear in the same place, growing downward as results render,
-        // not wherever it happened to be sized/positioned before.
-        let command_count = app
-            .path()
-            .app_data_dir()
-            .map(|dir| config::load(&dir).commands.len())
-            .unwrap_or(0);
+        // Reset to the base (no-results) size and re-center before every
+        // summon, regardless of whatever size it grew to - or window-state
+        // restored at launch - last time it was open. Every summon resets
+        // the query to empty (see the focus-gained handler in App.svelte),
+        // which shows no results until the user types, so the base height
+        // is always correct here without waiting on the frontend to measure.
         let _ = window.set_size(Size::Logical(LogicalSize {
             width: MAIN_WINDOW_WIDTH,
-            height: initial_main_window_height(command_count),
+            height: MAIN_WINDOW_BASE_HEIGHT,
         }));
         let _ = window.center();
+        // Give the summoned window a taskbar entry so it's visible/alt-tabbable
+        // while open, even though tauri.conf.json sets skipTaskbar: true as
+        // the default (hidden) state.
+        let _ = window.set_skip_taskbar(false);
         let _ = window.show();
         let _ = window.set_focus();
         WINDOW_SHOWN.store(true, Ordering::SeqCst);
