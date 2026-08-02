@@ -23,14 +23,14 @@ export const runAction = async (action: CommandAction, query: string): Promise<v
 
   switch (action.type) {
     case 'open_url':
-      await invoke('open_target', { target: action.url });
+      await invoke('open_target', { target: action.url, browser: action.browser });
       return;
     case 'search':
-      await invoke('open_target', { target: buildSearchUrl(action.urlTemplate, query) });
+      await invoke('open_target', { target: buildSearchUrl(action.urlTemplate, query), browser: action.browser });
       return;
     case 'launch_app':
       if (action.kind === 'uri') {
-        await invoke('open_target', { target: action.uri });
+        await invoke('open_target', { target: action.uri, browser: null });
       } else {
         await invoke('launch_app_command', {
           default: action.default,

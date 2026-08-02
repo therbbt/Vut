@@ -4,8 +4,12 @@ use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_shell::ShellExt;
 
 /// Opens a fixed URL, a resolved search URL, or a URI scheme (e.g.
-/// `spotify:`) with the OS's default handler. Used for the `open_url` and
-/// `search` action types, and for `launch_app`'s `uri` sub-form.
+/// `spotify:`) with the OS's default handler, or with `browser` if given
+/// (the `open_url`/`search` action types' optional per-command browser
+/// override - an executable name like "firefox" or "google-chrome-stable",
+/// passed straight through to the `open` crate's `with_detached`, which
+/// execs it as `<browser> <target>` on Linux/Windows and `open -a <browser>
+/// <target>` on macOS).
 ///
 /// Called via a Rust command rather than the opener plugin's JS binding
 /// directly: the JS binding is gated by the `opener:allow-open-url`
@@ -14,8 +18,8 @@ use tauri_plugin_shell::ShellExt;
 /// like an AutoHotKey script), so it can be any scheme the user configured -
 /// a fixed allowlist would defeat the point of a keyword launcher.
 #[command]
-pub fn open_target(app: AppHandle, target: String) -> Result<(), String> {
-    app.opener().open_url(target, None::<&str>).map_err(|e| e.to_string())
+pub fn open_target(app: AppHandle, target: String, browser: Option<String>) -> Result<(), String> {
+    app.opener().open_url(target, browser).map_err(|e| e.to_string())
 }
 
 /// Spawns an explicit executable (the `launch_app` "command" sub-form),
