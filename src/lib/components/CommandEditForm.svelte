@@ -30,6 +30,7 @@
   let kind: ActionKind = 'open_url';
   let openUrl = '';
   let searchTemplate = '';
+  let browser = '';
   let launchUri = '';
   let defaultSpec: CommandSpec = emptyCommandSpec();
   let windowsSpec: CommandSpec | null = null;
@@ -50,6 +51,7 @@
     kind = action ? actionKindOf(action) : 'open_url';
     openUrl = action?.type === 'open_url' ? action.url : '';
     searchTemplate = action?.type === 'search' ? action.urlTemplate : 'https://www.google.com/search?q={query}';
+    browser = (action?.type === 'open_url' || action?.type === 'search') && action.browser ? action.browser : '';
     launchUri = action?.type === 'launch_app' && action.kind === 'uri' ? action.uri : '';
     if (action?.type === 'launch_app' && action.kind === 'command') {
       defaultSpec = action.default;
@@ -92,6 +94,11 @@
     if (typeof path === 'string') defaultSpec = { ...defaultSpec, command: path };
   };
 
+  const browseForBrowser = async () => {
+    const path = await openFileDialog({ multiple: false, directory: false });
+    if (typeof path === 'string') browser = path;
+  };
+
   const save = () => {
     const trimmedKeyword = keyword.trim();
     const trimmedTitle = title.trim();
@@ -110,13 +117,13 @@
         error = 'URL is required.';
         return;
       }
-      action = { type: 'open_url', url: openUrl.trim() };
+      action = { type: 'open_url', url: openUrl.trim(), browser: browser.trim() || null };
     } else if (kind === 'search') {
       if (!searchTemplate.includes('{query}')) {
         error = 'Search URL must contain {query}.';
         return;
       }
-      action = { type: 'search', urlTemplate: searchTemplate.trim() };
+      action = { type: 'search', urlTemplate: searchTemplate.trim(), browser: browser.trim() || null };
     } else if (kind === 'launch_uri') {
       if (!launchUri.trim()) {
         error = 'URI is required.';
@@ -189,12 +196,26 @@
         <span>URL</span>
         <input bind:value={openUrl} placeholder="https://youtube.com" autocomplete="off" />
       </label>
+      <label>
+        <span>Browser (optional)</span>
+        <div class="row-inline">
+          <input bind:value={browser} placeholder="firefox, google-chrome-stable… (leave blank for system default)" autocomplete="off" spellcheck="false" />
+          <button type="button" class="btn ghost small" on:click={() => void browseForBrowser()}>Browse…</button>
+        </div>
+      </label>
     {:else if kind === 'search'}
       <label>
         <span>Search URL template</span>
         <input bind:value={searchTemplate} placeholder="https://www.google.com/search?q={'{query}'}" autocomplete="off" />
       </label>
       <p class="hint">Everything typed after the keyword is URL-encoded into <code>{'{query}'}</code>.</p>
+      <label>
+        <span>Browser (optional)</span>
+        <div class="row-inline">
+          <input bind:value={browser} placeholder="firefox, google-chrome-stable… (leave blank for system default)" autocomplete="off" spellcheck="false" />
+          <button type="button" class="btn ghost small" on:click={() => void browseForBrowser()}>Browse…</button>
+        </div>
+      </label>
     {:else if kind === 'launch_uri'}
       <label>
         <span>URI</span>
@@ -278,6 +299,16 @@
   .row {
     display: grid;
     gap: 0.6rem;
+  }
+
+  .row-inline {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .row-inline input {
+    flex: 1;
+    min-width: 0;
   }
 
   .row.two {

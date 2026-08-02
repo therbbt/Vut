@@ -4,8 +4,8 @@ export interface CommandSpec {
 }
 
 export type CommandAction =
-  | { type: 'open_url'; url: string }
-  | { type: 'search'; urlTemplate: string }
+  | { type: 'open_url'; url: string; browser: string | null }
+  | { type: 'search'; urlTemplate: string; browser: string | null }
   | { type: 'launch_app'; kind: 'uri'; uri: string }
   | {
       type: 'launch_app';

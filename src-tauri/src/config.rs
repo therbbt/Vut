@@ -27,9 +27,20 @@ pub struct CommandSpec {
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum CommandAction {
     #[serde(rename = "open_url")]
-    OpenUrl { url: String },
+    OpenUrl {
+        url: String,
+        /// Executable name (e.g. "firefox", "google-chrome-stable") to open
+        /// this URL with, bypassing the OS default browser. `None` (or
+        /// missing on older config.json files) keeps using the OS default.
+        #[serde(default)]
+        browser: Option<String>,
+    },
     #[serde(rename = "search", rename_all = "camelCase")]
-    Search { url_template: String },
+    Search {
+        url_template: String,
+        #[serde(default)]
+        browser: Option<String>,
+    },
     #[serde(rename = "launch_app")]
     LaunchApp(LaunchAppAction),
     /// Opens Vut's own Settings window. A real command like any other -
@@ -93,7 +104,7 @@ fn open_url(id: &str, keyword: &str, title: &str, url: &str) -> VutCommand {
         keyword: keyword.to_string(),
         title: title.to_string(),
         icon: None,
-        action: CommandAction::OpenUrl { url: url.to_string() },
+        action: CommandAction::OpenUrl { url: url.to_string(), browser: None },
     }
 }
 
@@ -121,6 +132,7 @@ pub fn default_config() -> VutConfig {
                 icon: None,
                 action: CommandAction::Search {
                     url_template: "https://www.google.com/search?q={query}".to_string(),
+                    browser: None,
                 },
             },
             VutCommand {
@@ -209,7 +221,7 @@ mod tests {
         let parsed: VutConfig = serde_json::from_str(&json).unwrap();
         let g = parsed.commands.iter().find(|c| c.keyword == "g").unwrap();
         match &g.action {
-            CommandAction::Search { url_template } => {
+            CommandAction::Search { url_template, .. } => {
                 assert_eq!(url_template, "https://www.google.com/search?q={query}");
             }
             other => panic!("expected Search action, got {other:?}"),
