@@ -40,5 +40,8 @@ export const runAction = async (action: CommandAction, query: string): Promise<v
         });
       }
       return;
+    case 'open_settings':
+      await invoke('show_settings');
+      return;
   }
 };

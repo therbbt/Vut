@@ -14,7 +14,8 @@ export type CommandAction =
       windows: CommandSpec | null;
       macos: CommandSpec | null;
       linux: CommandSpec | null;
-    };
+    }
+  | { type: 'open_settings' };
 
 export interface VutCommand {
   id: string;
