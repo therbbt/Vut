@@ -17,14 +17,14 @@ const firstToken = (input: string): { token: string; rest: string; hasSpace: boo
 
 /**
  * Filters and orders commands for the results list as the user types.
- * Empty input shows every command in config order (browse mode). Otherwise:
- * an exact keyword match always sorts first (so Enter/Tab act on it even
- * while other prefix matches are also showing), followed by keyword-prefix
- * matches, followed by title substring matches for discoverability.
+ * Empty input shows no results - just the search bar. Otherwise: an exact
+ * keyword match always sorts first (so Enter/Tab act on it even while other
+ * prefix matches are also showing), followed by keyword-prefix matches,
+ * followed by title substring matches for discoverability.
  */
 export const matchCommands = (input: string, commands: VutCommand[]): MatchResult[] => {
   if (input.length === 0) {
-    return commands.map((command) => ({ command, query: '', exact: false }));
+    return [];
   }
 
   const { token, rest, hasSpace } = firstToken(input);
