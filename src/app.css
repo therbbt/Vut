@@ -1,0 +1,35 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Fallback only - matches the "Vut Dark" palette. The real palette (any of
+     the Vut/Catppuccin options) is applied over these as inline custom
+     properties on <html> by applyPalette() once settings have loaded, which
+     always wins on specificity. This is just so nothing is unstyled before
+     that runs. */
+  --bg: #16161a;
+  --panel: #1e1e22;
+  --panel-2: #28282d;
+  --text: #ecebe7;
+  --muted: #97958d;
+  --border: rgba(255, 255, 255, 0.08);
+  --accent: #5b9bd5;
+  --accent-soft: rgba(91, 155, 213, 0.16);
+}
+
+* { box-sizing: border-box; }
+html, body, #app { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+body { background: transparent; color: var(--text, #f5f7fb); }
+input, button { font: inherit; }
+button { cursor: pointer; }
+
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+html:not([data-theme='light']) {
+  color-scheme: dark;
+}

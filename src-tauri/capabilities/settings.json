@@ -1,0 +1,14 @@
+{
+  "identifier": "settings-window",
+  "description": "Capabilities for the Settings window",
+  "windows": ["settings"],
+  "permissions": [
+    "core:default",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:event:allow-emit",
+    "autostart:default",
+    "dialog:default",
+    "process:default"
+  ]
+}

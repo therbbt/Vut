@@ -1,0 +1,11 @@
+{
+  "identifier": "main-window",
+  "description": "Capabilities for the main search bar window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:event:allow-emit"
+  ]
+}
