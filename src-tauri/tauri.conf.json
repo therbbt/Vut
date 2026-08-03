@@ -33,8 +33,8 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "publisher": "olle_norstrom",
-    "copyright": "Copyright © 2026 olle_norstrom",
+    "publisher": "therbbt",
+    "copyright": "Copyright © 2026 therbbt",
     "shortDescription": "Very Useful Tool - a keyboard-driven launcher",
     "longDescription": "Vut is a cross-platform, keyboard-driven launcher in the spirit of Flow Launcher and AutoHotKey-style keyword launchers. Press a hotkey from anywhere to pop open a search bar and run user-defined commands: open a website, run a web search, or launch an application.",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"]

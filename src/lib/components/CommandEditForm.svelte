@@ -17,6 +17,7 @@
 <script lang="ts">
   import { emptyCommandSpec, newCommandId } from '../types';
   import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
+  import Dropdown from './Dropdown.svelte';
 
   // undefined = nothing selected (placeholder); null = creating a new
   // command (blank form); a VutCommand = editing that existing command.
@@ -182,13 +183,17 @@
 
     <label>
       <span>Action</span>
-      <select bind:value={kind}>
-        <option value="open_url">Open a fixed URL</option>
-        <option value="search">Search (URL template with {'{query}'})</option>
-        <option value="launch_uri">Launch app via URI scheme</option>
-        <option value="launch_command">Launch app via executable</option>
-        <option value="open_settings">Open Vut Settings</option>
-      </select>
+      <Dropdown
+        options={[
+          { value: 'open_url', label: 'Open a fixed URL' },
+          { value: 'search', label: 'Search (URL template with {query})' },
+          { value: 'launch_uri', label: 'Launch app via URI scheme' },
+          { value: 'launch_command', label: 'Launch app via executable' },
+          { value: 'open_settings', label: 'Open Vut Settings' },
+        ]}
+        value={kind}
+        onChange={(v) => (kind = v as ActionKind)}
+      />
     </label>
 
     {#if kind === 'open_url'}
@@ -280,6 +285,8 @@
     flex-direction: column;
     gap: 0.75rem;
     padding: 1rem 1.25rem;
+    min-height: 0;
+    min-width: 0;
     overflow-y: auto;
   }
 
@@ -312,15 +319,15 @@
   }
 
   .row.two {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   }
 
   .row.three {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
 
-  input,
-  select {
+  input {
+    min-width: 0;
     border: 1px solid var(--border);
     border-radius: 0.45rem;
     background: var(--panel-2);
@@ -329,8 +336,7 @@
     font-size: 0.85rem;
   }
 
-  input:focus,
-  select:focus {
+  input:focus {
     outline: 2px solid var(--accent-soft);
     outline-offset: 0;
   }

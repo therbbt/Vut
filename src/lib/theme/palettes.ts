@@ -21,7 +21,7 @@ export interface Palette {
 export const PALETTES: Palette[] = [
   {
     id: 'vut-light',
-    name: 'Vut Light',
+    name: 'Light',
     mode: 'light',
     colors: {
       bg: '#faf8f4',
@@ -35,7 +35,7 @@ export const PALETTES: Palette[] = [
   },
   {
     id: 'vut-dark',
-    name: 'Vut Dark',
+    name: 'Dark',
     mode: 'dark',
     colors: {
       bg: '#16161a',

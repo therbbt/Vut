@@ -5,8 +5,8 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Fallback only - matches the "Vut Dark" palette. The real palette (any of
-     the Vut/Catppuccin options) is applied over these as inline custom
+  /* Fallback only - matches the "Dark" palette. The real palette (any of
+     the built-in/Catppuccin options) is applied over these as inline custom
      properties on <html> by applyPalette() once settings have loaded, which
      always wins on specificity. This is just so nothing is unstyled before
      that runs. */
