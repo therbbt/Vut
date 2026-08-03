@@ -4340,6 +4340,7 @@ dependencies = [
 name = "vut"
 version = "0.1.0"
 dependencies = [
+ "raw-window-handle",
  "serde",
  "serde_json",
  "tauri",
@@ -4351,6 +4352,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-shell",
  "tauri-plugin-window-state",
+ "x11rb",
 ]
 
 [[package]]

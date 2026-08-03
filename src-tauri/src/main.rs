@@ -91,8 +91,44 @@ fn show_main_window(app: &AppHandle) {
         let _ = window.set_skip_taskbar(false);
         let _ = window.show();
         let _ = window.set_focus();
+        #[cfg(target_os = "linux")]
+        request_window_activation(&window);
         WINDOW_SHOWN.store(true, Ordering::SeqCst);
     }
+}
+
+/// `window.set_focus()` (tao's `gtk_window_present_with_time(GDK_CURRENT_TIME)`
+/// under the hood) is a "normal application" focus request, which KWin's
+/// focus-stealing prevention is specifically designed to reject when it
+/// didn't originate from whatever window currently has focus - exactly the
+/// summon-over-another-app case this hotkey exists for (e.g. hitting
+/// Alt+Space while FlashPad has focus: input keeps going to FlashPad
+/// instead of jumping to Vut's search box). Sending our own EWMH
+/// `_NET_ACTIVE_WINDOW` client message with source indication 2 ("pager"/
+/// external tool, not "application") sidesteps that check entirely - the
+/// same mechanism `wmctrl -a`/`xdotool windowactivate` use, and one KWin
+/// (and GNOME/others) treat as an authoritative user-facing request rather
+/// than a background app trying to steal focus.
+#[cfg(target_os = "linux")]
+fn request_window_activation(window: &tauri::WebviewWindow) {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use x11rb::connection::Connection;
+    use x11rb::protocol::xproto::{ClientMessageEvent, ConnectionExt, EventMask};
+
+    let Ok(handle) = window.window_handle() else { return };
+    let RawWindowHandle::Xlib(xlib) = handle.as_raw() else { return };
+    let xid = xlib.window as u32;
+
+    let Ok((conn, screen_num)) = x11rb::connect(None) else { return };
+    let root = conn.setup().roots[screen_num].root;
+
+    let Ok(cookie) = conn.intern_atom(false, b"_NET_ACTIVE_WINDOW") else { return };
+    let Ok(atom_reply) = cookie.reply() else { return };
+
+    let event = ClientMessageEvent::new(32, xid, atom_reply.atom, [2u32, 0, 0, 0, 0]);
+    let mask = EventMask::SUBSTRUCTURE_REDIRECT | EventMask::SUBSTRUCTURE_NOTIFY;
+    let _ = conn.send_event(false, root, mask, event);
+    let _ = conn.flush();
 }
 
 fn toggle_main_window(app: &AppHandle) {

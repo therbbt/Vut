@@ -19,6 +19,14 @@ tauri-plugin-shell = "2"
 tauri-plugin-process = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+raw-window-handle = "0.6"
+
+# Only needed for the EWMH _NET_ACTIVE_WINDOW nudge in show_main_window (see
+# the comment there) - X11-specific, and already pulled in transitively by
+# tauri-plugin-global-shortcut on these targets, so this adds no new
+# transitive dependency, just a direct name for our own code to use it too.
+[target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
+x11rb = "0.13"
 
 [features]
 default = ["custom-protocol"]
