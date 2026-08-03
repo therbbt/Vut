@@ -6,6 +6,7 @@
   import { AutostartService } from './lib/services/autostartService';
   import CommandList from './lib/components/CommandList.svelte';
   import CommandEditForm from './lib/components/CommandEditForm.svelte';
+  import Dropdown from './lib/components/Dropdown.svelte';
   import type { VutCommand } from './lib/types';
 
   const hotkeyService = new HotkeyService();
@@ -208,72 +209,72 @@
 
   {#if tab === 'general'}
     <div class="general">
-      <section>
-        <h3>Global hotkey</h3>
-        <p class="hint">
-          Summons Vut from anywhere. Needs at least one modifier (Ctrl/Alt/Shift/Super) plus a key - CapsLock can't be
-          registered as a global modifier (it's a toggle key, not held-down like the others), so it isn't offered here.
-        </p>
-        <button class="hotkey-btn" class:recording={hotkeyRecording} type="button" on:click={startHotkeyCapture}>
-          {hotkeyRecording ? 'Press a key combo… (Esc to cancel)' : $settings.hotkey}
-        </button>
-        {#if hotkeyError}<p class="error">{hotkeyError}</p>{/if}
-        {#if hotkeyRecording && hotkeyHint}<p class="hint">{hotkeyHint}</p>{/if}
-      </section>
+      <div class="pane">
+        <section class="card">
+          <span class="section-title">Global hotkey</span>
+          <p class="hint">
+            Summons Vut from anywhere. Needs at least one modifier (Ctrl/Alt/Shift/Super) plus a key - CapsLock can't
+            be registered as a global modifier (it's a toggle key, not held-down like the others), so it isn't
+            offered here.
+          </p>
+          <button class="hotkey-btn" class:recording={hotkeyRecording} type="button" on:click={startHotkeyCapture}>
+            {hotkeyRecording ? 'Press a key combo… (Esc to cancel)' : $settings.hotkey}
+          </button>
+          {#if hotkeyError}<p class="error">{hotkeyError}</p>{/if}
+          {#if hotkeyRecording && hotkeyHint}<p class="hint">{hotkeyHint}</p>{/if}
+        </section>
 
-      <section>
-        <h3>Theme</h3>
-        <div class="mode-toggle">
-          <button class:active={$settings.theme === 'light'} type="button" on:click={() => void setMode('light')}>Light</button>
-          <button class:active={$settings.theme === 'dark'} type="button" on:click={() => void setMode('dark')}>Dark</button>
-        </div>
-        <div class="row two">
-          <label>
+        <section class="card">
+          <span class="section-title">Appearance</span>
+          <div class="mode-toggle">
+            <button class:active={$settings.theme === 'light'} type="button" on:click={() => void setMode('light')}>Light</button>
+            <button class:active={$settings.theme === 'dark'} type="button" on:click={() => void setMode('dark')}>Dark</button>
+          </div>
+          <div class="palette-row">
             <span>Light palette</span>
-            <select value={$settings.lightPaletteId} on:change={(e) => void setLightPalette(e.currentTarget.value)}>
-              {#each palettesForMode('light') as palette (palette.id)}
-                <option value={palette.id}>{palette.name}</option>
-              {/each}
-            </select>
-          </label>
-          <label>
+            <Dropdown
+              options={palettesForMode('light').map((p) => ({ value: p.id, label: p.name }))}
+              value={$settings.lightPaletteId}
+              onChange={(id) => void setLightPalette(id)}
+            />
+          </div>
+          <div class="palette-row">
             <span>Dark palette</span>
-            <select value={$settings.darkPaletteId} on:change={(e) => void setDarkPalette(e.currentTarget.value)}>
-              {#each palettesForMode('dark') as palette (palette.id)}
-                <option value={palette.id}>{palette.name}</option>
-              {/each}
-            </select>
+            <Dropdown
+              options={palettesForMode('dark').map((p) => ({ value: p.id, label: p.name }))}
+              value={$settings.darkPaletteId}
+              onChange={(id) => void setDarkPalette(id)}
+            />
+          </div>
+        </section>
+
+        <section class="card">
+          <span class="section-title">Startup</span>
+          <label class="row">
+            <span>Launch Vut automatically on login</span>
+            <input type="checkbox" checked={autostartEnabled} on:change={(e) => void setAutostart(e.currentTarget.checked)} />
           </label>
-        </div>
-      </section>
+        </section>
 
-      <section>
-        <h3>Startup</h3>
-        <label class="checkbox">
-          <input type="checkbox" checked={autostartEnabled} on:change={(e) => void setAutostart(e.currentTarget.checked)} />
-          <span>Launch Vut automatically on login</span>
-        </label>
-      </section>
+        <section class="card">
+          <span class="section-title">Default search</span>
+          <p class="hint">Used when nothing typed matches a keyword, so no input is ever a dead end.</p>
+          <Dropdown
+            options={[{ value: '', label: 'None' }, ...searchCommands().map((c) => ({ value: c.id, label: `${c.title} (${c.keyword})` }))]}
+            value={$settings.defaultSearchCommandId ?? ''}
+            onChange={(id) => void setDefaultSearch(id)}
+          />
+        </section>
 
-      <section>
-        <h3>Default search</h3>
-        <p class="hint">Used when nothing typed matches a keyword, so no input is ever a dead end.</p>
-        <select value={$settings.defaultSearchCommandId ?? ''} on:change={(e) => void setDefaultSearch(e.currentTarget.value)}>
-          <option value="">None</option>
-          {#each searchCommands() as command (command.id)}
-            <option value={command.id}>{command.title} ({command.keyword})</option>
-          {/each}
-        </select>
-      </section>
-
-      <section>
-        <h3>Config file</h3>
-        <p class="hint mono">{configPath}</p>
-        <div class="actions-row">
-          <button class="btn" type="button" on:click={openConfigFile}>Open config file</button>
-          <button class="btn danger" type="button" on:click={() => void quitApp()}>Quit Vut</button>
-        </div>
-      </section>
+        <section class="card">
+          <span class="section-title">Config file</span>
+          <p class="hint mono">{configPath}</p>
+          <div class="actions-row">
+            <button class="btn" type="button" on:click={openConfigFile}>Open config file</button>
+            <button class="btn danger" type="button" on:click={() => void quitApp()}>Quit Vut</button>
+          </div>
+        </section>
+      </div>
     </div>
   {:else}
     <div class="commands">
@@ -316,23 +317,29 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    padding: 0.6rem 1rem;
+    padding: 0.75rem 0.75rem 0;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
 
   .tabs button {
     border: 0;
+    border-bottom: 2px solid transparent;
     background: transparent;
     color: var(--muted);
-    padding: 0.4rem 0.8rem;
-    border-radius: 0.4rem;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    padding: 0.45rem 0.3rem 0.6rem;
+    margin-bottom: -1px;
+    cursor: pointer;
+  }
+
+  .tabs button:hover {
+    color: var(--text);
   }
 
   .tabs button.active {
-    background: var(--panel-2);
     color: var(--text);
+    border-bottom-color: var(--accent);
     font-weight: 600;
   }
 
@@ -344,22 +351,35 @@
 
   .general {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
-    padding: 1.25rem 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    max-width: 640px;
+    padding: 0.75rem;
   }
 
-  .general h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.9rem;
+  .pane {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .card {
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--panel);
+    padding: 0.65rem 0.7rem;
+  }
+
+  .section-title {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.5rem;
   }
 
   .hint {
     margin: 0 0 0.6rem 0;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     color: var(--muted);
     line-height: 1.5;
   }
@@ -371,12 +391,12 @@
 
   .hotkey-btn {
     border: 1px solid var(--border);
-    border-radius: 0.5rem;
+    border-radius: 0.4rem;
     background: var(--panel-2);
     color: var(--text);
-    padding: 0.6rem 1rem;
-    font-size: 0.9rem;
-    min-width: 220px;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+    min-width: 180px;
   }
 
   .hotkey-btn.recording {
@@ -386,24 +406,24 @@
 
   .error {
     color: #ef4444;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     margin: 0.5rem 0 0 0;
   }
 
   .mode-toggle {
     display: inline-flex;
     border: 1px solid var(--border);
-    border-radius: 0.5rem;
+    border-radius: 0.4rem;
     overflow: hidden;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.6rem;
   }
 
   .mode-toggle button {
     border: 0;
     background: var(--panel-2);
     color: var(--muted);
-    padding: 0.4rem 1rem;
-    font-size: 0.82rem;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.78rem;
   }
 
   .mode-toggle button.active {
@@ -413,37 +433,35 @@
   }
 
   .row {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .row.two {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  label {
     display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    font-size: 0.78rem;
-    color: var(--muted);
-  }
-
-  select {
-    border: 1px solid var(--border);
-    border-radius: 0.45rem;
-    background: var(--panel-2);
-    color: var(--text);
-    padding: 0.45rem 0.55rem;
-    font-size: 0.85rem;
-  }
-
-  .checkbox {
-    flex-direction: row;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.8rem;
     color: var(--text);
-    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .row input {
+    flex-shrink: 0;
+  }
+
+  .palette-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+
+  .palette-row:last-of-type {
+    margin-bottom: 0;
+  }
+
+  .palette-row :global(.dropdown) {
+    width: 180px;
   }
 
   .actions-row {
@@ -453,11 +471,11 @@
 
   .btn {
     border: 1px solid var(--border);
-    border-radius: 0.45rem;
+    border-radius: 0.4rem;
     background: var(--panel-2);
     color: var(--text);
-    font-size: 0.82rem;
-    padding: 0.5rem 0.9rem;
+    font-size: 0.78rem;
+    padding: 0.4rem 0.75rem;
   }
 
   .btn.danger:hover {

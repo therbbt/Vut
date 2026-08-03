@@ -232,6 +232,15 @@ fn open_config_file(app: AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// Stand-ins for the `bg` color of whichever palette is actually active
+/// (see src/lib/theme/palettes.ts) - not an exact match for every palette
+/// variant (there are several dark ones, several light ones), but close
+/// enough within the same family to be imperceptible. Used only to pick the
+/// settings window's native background_color below, so the split that
+/// matters (light vs dark) is right even if the exact shade isn't.
+const FALLBACK_DARK_BG: tauri::utils::config::Color = tauri::utils::config::Color(0x16, 0x16, 0x1a, 0xff);
+const FALLBACK_LIGHT_BG: tauri::utils::config::Color = tauri::utils::config::Color(0xfa, 0xf8, 0xf4, 0xff);
+
 /// Gets-or-creates the Settings window. Built at runtime rather than
 /// declared in tauri.conf.json, since it's only ever needed once the user
 /// asks for it (tray menu or the search bar) - not on every launch.
@@ -243,12 +252,27 @@ fn show_settings(app: AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
+    // A freshly created, not-yet-painted webview surface defaults to black
+    // on Linux until the page's own CSS background paints a frame later -
+    // visible as a black flash for however long that takes. Setting the
+    // native background_color up front to roughly match the user's actual
+    // theme means there's nothing to flash *from*: the window is already
+    // (approximately) the right color before a single pixel of web content
+    // has rendered.
+    let theme = app
+        .path()
+        .app_data_dir()
+        .map(|dir| config::load(&dir).settings.theme)
+        .unwrap_or_else(|_| "dark".to_string());
+    let background_color = if theme == "light" { FALLBACK_LIGHT_BG } else { FALLBACK_DARK_BG };
+
     let window = WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("settings.html".into()))
         .title("Vut Settings")
         .inner_size(760.0, 580.0)
         .min_inner_size(600.0, 440.0)
         .resizable(true)
         .center()
+        .background_color(background_color)
         .build()
         .map_err(|e| e.to_string())?;
     let _ = window.show();

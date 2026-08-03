@@ -52,6 +52,7 @@
     padding: 1rem;
     border-right: 1px solid var(--border);
     min-width: 0;
+    min-height: 0;
     overflow: hidden;
   }
 
