@@ -1,0 +1,64 @@
+name: Build Linux packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+    steps:
+      # GitHub doesn't offer a hosted Fedora runner, so this job runs inside
+      # an actual Fedora container instead - same dnf package names/versions
+      # a real Fedora user's machine would have, rather than approximating
+      # them from Ubuntu. The container starts bare, so install even git
+      # before checkout can run.
+      - name: Install system dependencies
+        run: |
+          dnf install -y \
+            git gcc gcc-c++ make pkgconf-pkg-config \
+            glib2-devel gtk3-devel webkit2gtk4.1-devel javascriptcoregtk4.1-devel \
+            librsvg2-devel libappindicator-gtk3-devel \
+            rpm-build file curl
+
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build Vut
+        # AppImage bundling needs linuxdeploy (and its plugins), which are
+        # themselves distributed as AppImages that mount via FUSE - and
+        # setting APPIMAGE_EXTRACT_AND_RUN=1 to avoid that FUSE mount still
+        # isn't enough in this unprivileged container (likely /tmp being
+        # noexec, or another sandboxing restriction blocking any extracted
+        # binary from running at all). Since this workflow targets Fedora
+        # specifically, the .rpm is what actually matters - skip the
+        # appimage bundle entirely rather than continuing to fight
+        # linuxdeploy's environment requirements here.
+        # tauri.conf.json has createUpdaterArtifacts + a real pubkey now, so
+        # every `tauri build` tries to sign - these secrets have to be set
+        # here too, not just in release.yml, or this smoke-test build fails
+        # after bundling with "public key found, but no private key".
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npm run tauri build -- --bundles deb,rpm
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vut-linux
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
+          if-no-files-found: error

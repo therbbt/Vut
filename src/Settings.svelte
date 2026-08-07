@@ -12,6 +12,9 @@
   import Dropdown from './lib/components/Dropdown.svelte';
   import PluginLoginForm from './lib/components/PluginLoginForm.svelte';
   import type { VutCommand } from './lib/types';
+  import { getVersion } from '@tauri-apps/api/app';
+  import { check as checkForUpdate, type Update } from '@tauri-apps/plugin-updater';
+  import { relaunch } from '@tauri-apps/plugin-process';
 
   const hotkeyService = new HotkeyService();
   const autostartService = new AutostartService();
@@ -41,6 +44,13 @@
   let pluginsFolderPath = '';
   let reloadingPlugins = false;
   let saveNotice = '';
+
+  let appVersion = '';
+  let checkingForUpdate = false;
+  let availableUpdate: Update | null = null;
+  let updateMessage = '';
+  let updateError = '';
+  let installingUpdate = false;
 
   const selectCommand = (id: string) => {
     formMode = { kind: 'edit', id };
@@ -210,6 +220,37 @@
     return result;
   };
 
+  const checkForUpdates = async () => {
+    checkingForUpdate = true;
+    updateMessage = '';
+    updateError = '';
+    try {
+      const update = await checkForUpdate();
+      availableUpdate = update;
+      if (!update) updateMessage = "You're up to date.";
+    } catch (err) {
+      updateError = err instanceof Error ? err.message : 'Failed to check for updates.';
+    } finally {
+      checkingForUpdate = false;
+    }
+  };
+
+  // downloadAndInstall() replaces the running binary on disk - relaunch()
+  // is required afterward since the currently-running process is still the
+  // old one.
+  const installUpdate = async () => {
+    if (!availableUpdate) return;
+    installingUpdate = true;
+    updateError = '';
+    try {
+      await availableUpdate.downloadAndInstall();
+      await relaunch();
+    } catch (err) {
+      updateError = err instanceof Error ? err.message : 'Failed to install update.';
+      installingUpdate = false;
+    }
+  };
+
   const quitApp = async () => {
     const { exit } = await import('@tauri-apps/plugin-process');
     await exit(0);
@@ -226,6 +267,7 @@
       autostartEnabled = await autostartService.isEnabled();
       configPath = await configService.configFilePath();
       pluginsFolderPath = await pluginsDirPath();
+      appVersion = await getVersion();
     })();
     return () => unlistenConfig?.();
   });
@@ -302,6 +344,24 @@
             value={$settings.defaultSearchCommandId ?? ''}
             onChange={(id) => void setDefaultSearch(id)}
           />
+        </section>
+
+        <section class="card">
+          <span class="section-title">Updates</span>
+          <div class="actions-row">
+            <span class="hint mono">{appVersion ? `v${appVersion}` : ''}</span>
+            {#if availableUpdate}
+              <button class="btn primary" type="button" disabled={installingUpdate} on:click={() => void installUpdate()}>
+                {installingUpdate ? 'Installing…' : `Install v${availableUpdate.version}`}
+              </button>
+            {:else}
+              <button class="btn" type="button" disabled={checkingForUpdate} on:click={() => void checkForUpdates()}>
+                {checkingForUpdate ? 'Checking…' : 'Check for updates'}
+              </button>
+            {/if}
+          </div>
+          {#if updateMessage}<p class="hint">{updateMessage}</p>{/if}
+          {#if updateError}<p class="error">{updateError}</p>{/if}
         </section>
 
         <section class="card">
@@ -545,6 +605,7 @@
 
   .actions-row {
     display: flex;
+    align-items: center;
     gap: 0.6rem;
   }
 
@@ -555,6 +616,15 @@
     color: var(--text);
     font-size: 0.78rem;
     padding: 0.4rem 0.75rem;
+  }
+
+  .btn.primary {
+    background: var(--accent-soft);
+    font-weight: 600;
+  }
+
+  .btn:disabled {
+    opacity: 0.6;
   }
 
   .btn.danger:hover {

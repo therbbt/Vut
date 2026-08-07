@@ -37,6 +37,16 @@
     "copyright": "Copyright © 2026 therbbt",
     "shortDescription": "Very Useful Tool - a keyboard-driven launcher",
     "longDescription": "Vut is a cross-platform, keyboard-driven launcher in the spirit of Flow Launcher and AutoHotKey-style keyword launchers. Press a hotkey from anywhere to pop open a search bar and run user-defined commands: open a website, run a web search, or launch an application.",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"]
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": ["https://github.com/therbbt/Vut/releases/latest/download/latest.json"],
+      "windows": {
+        "installMode": "passive"
+      },
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ1RkZFM0E5RjlENDMyOEIKUldTTE10VDVxZVAvUlY3Z0wzUlFFN01LbUh2UE1VTWs4NDh1YXgwMjdVQ3NlQ2VhYjhGemNVTGsK"
+    }
   }
 }
