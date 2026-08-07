@@ -1,18 +1,22 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { commands, settings, loadConfig, startConfigSync, saveCommands, saveSettings, configService } from './lib/stores/configStore';
+  import { loadPlugins, pluginEntries, getPluginModule, applyConfigPatch, findCommandForPlugin } from './lib/plugins/pluginStore';
+  import { pluginsDirPath, openPluginsFolder } from './lib/plugins/pluginService';
+  import type { PluginExecuteResult } from './lib/plugins/types';
   import { palettesForMode } from './lib/theme/palettes';
   import { HotkeyService, isValidHotkey } from './lib/services/hotkeyService';
   import { AutostartService } from './lib/services/autostartService';
   import CommandList from './lib/components/CommandList.svelte';
   import CommandEditForm from './lib/components/CommandEditForm.svelte';
   import Dropdown from './lib/components/Dropdown.svelte';
+  import PluginLoginForm from './lib/components/PluginLoginForm.svelte';
   import type { VutCommand } from './lib/types';
 
   const hotkeyService = new HotkeyService();
   const autostartService = new AutostartService();
 
-  let tab: 'general' | 'commands' = 'general';
+  let tab: 'general' | 'commands' | 'plugins' = 'general';
 
   // The form's contents are derived purely from this mode flag plus the
   // live $commands store below - never stored as its own stateful copy -
@@ -34,6 +38,8 @@
   let hotkeyError = '';
   let autostartEnabled = false;
   let configPath = '';
+  let pluginsFolderPath = '';
+  let reloadingPlugins = false;
   let saveNotice = '';
 
   const selectCommand = (id: string) => {
@@ -48,8 +54,8 @@
     formMode = { kind: 'none' };
   };
 
-  const flashSaved = () => {
-    saveNotice = 'Saved';
+  const flashSaved = (message = 'Saved') => {
+    saveNotice = message;
     setTimeout(() => (saveNotice = ''), 1500);
   };
 
@@ -177,6 +183,33 @@
 
   const openConfigFile = () => void configService.openConfigFile();
 
+  const reloadPlugins = async () => {
+    reloadingPlugins = true;
+    await loadPlugins();
+    reloadingPlugins = false;
+    flashSaved('Reloaded');
+  };
+
+  // The resulting token (or whatever the plugin's configPatch contains)
+  // goes on whichever command actually uses this plugin - normally the one
+  // ensureDefaultCommands already created, so in practice this is a single
+  // click with nothing else to set up first.
+  const handlePluginLogin = async (pluginId: string, fields: Record<string, string>): Promise<PluginExecuteResult> => {
+    const mod = getPluginModule(pluginId);
+    if (!mod?.login) return { ok: false, message: 'This plugin does not support logging in here.' };
+    const target = findCommandForPlugin($commands, pluginId);
+    if (!target) {
+      return { ok: false, message: 'No command uses this plugin yet - add one in Commands first.' };
+    }
+    const existingConfig = target.action.type === 'plugin' ? target.action.fields : {};
+    const result = await mod.login(fields, existingConfig);
+    if (result.ok && result.configPatch) {
+      const patched = applyConfigPatch(target, result.configPatch);
+      await saveCommands($commands.map((c) => (c.id === patched.id ? patched : c)));
+    }
+    return result;
+  };
+
   const quitApp = async () => {
     const { exit } = await import('@tauri-apps/plugin-process');
     await exit(0);
@@ -185,10 +218,14 @@
   onMount(() => {
     let unlistenConfig: (() => void) | undefined;
     void (async () => {
-      await loadConfig();
+      // Plugins aren't part of config.json (see pluginStore.ts) so they're
+      // loaded independently here - needed before the Commands editor's
+      // Action dropdown can offer them.
+      await Promise.all([loadConfig(), loadPlugins()]);
       unlistenConfig = await startConfigSync();
       autostartEnabled = await autostartService.isEnabled();
       configPath = await configService.configFilePath();
+      pluginsFolderPath = await pluginsDirPath();
     })();
     return () => unlistenConfig?.();
   });
@@ -204,6 +241,7 @@
   <nav class="tabs">
     <button class:active={tab === 'general'} on:click={() => (tab = 'general')}>General</button>
     <button class:active={tab === 'commands'} on:click={() => (tab = 'commands')}>Commands</button>
+    <button class:active={tab === 'plugins'} on:click={() => (tab = 'plugins')}>Plugins</button>
     {#if saveNotice}<span class="save-notice">{saveNotice}</span>{/if}
   </nav>
 
@@ -276,7 +314,7 @@
         </section>
       </div>
     </div>
-  {:else}
+  {:else if tab === 'commands'}
     <div class="commands">
       <CommandList
         commandList={$commands}
@@ -287,6 +325,47 @@
         onDelete={onDelete}
       />
       <CommandEditForm command={editingDraft} onSave={onCommandSave} onCancel={cancelEdit} />
+    </div>
+  {:else}
+    <div class="general">
+      <div class="pane">
+        <section class="card">
+          <span class="section-title">Plugins</span>
+          <p class="hint">
+            A plugin adds a new command action type - see it in the Action dropdown when editing a command. Drop a
+            folder (manifest.json + module) into the plugins folder and reload to pick it up; no restart needed.
+          </p>
+          <p class="hint mono">{pluginsFolderPath}</p>
+          <div class="actions-row">
+            <button class="btn" type="button" on:click={() => void openPluginsFolder()}>Open plugins folder</button>
+            <button class="btn" type="button" disabled={reloadingPlugins} on:click={() => void reloadPlugins()}>
+              {reloadingPlugins ? 'Reloading…' : 'Reload plugins'}
+            </button>
+          </div>
+        </section>
+
+        {#if $pluginEntries.length === 0}
+          <section class="card">
+            <p class="hint">No plugins found. Drop one into the plugins folder above and reload.</p>
+          </section>
+        {:else}
+          {#each $pluginEntries as entry (entry.manifest.id)}
+            <section class="card">
+              <span class="section-title">{entry.manifest.icon ?? '🧩'} {entry.manifest.name}</span>
+              {#if entry.manifest.description}<p class="hint">{entry.manifest.description}</p>{/if}
+              {#if entry.manifest.configSchema.length > 0}
+                <p class="hint mono">
+                  Fields: {entry.manifest.configSchema.map((f) => f.key).join(', ')}
+                </p>
+              {/if}
+              {#if entry.error}<p class="error">{entry.error}</p>{/if}
+              {#if !entry.error && entry.manifest.loginSchema.length > 0}
+                <PluginLoginForm schema={entry.manifest.loginSchema} onSubmit={(fields) => handlePluginLogin(entry.manifest.id, fields)} />
+              {/if}
+            </section>
+          {/each}
+        {/if}
+      </div>
     </div>
   {/if}
 </div>

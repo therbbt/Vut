@@ -1,0 +1,34 @@
+{
+  "id": "timepad",
+  "name": "TimePad",
+  "description": "Control a local TimePad timer. Log in below, then from the search bar: \"start <task>\", \"stop\", \"current\", \"dashboard\".",
+  "icon": "⏱️",
+  "module": "index.js",
+  "configSchema": [
+    {
+      "key": "baseUrl",
+      "label": "Base URL",
+      "type": "text",
+      "placeholder": "http://localhost:8000",
+      "required": true
+    },
+    {
+      "key": "token",
+      "label": "JWT token (set automatically by logging in below)",
+      "type": "password",
+      "required": false
+    }
+  ],
+  "loginSchema": [
+    { "key": "email", "label": "Email", "type": "text", "required": true },
+    { "key": "password", "label": "Password", "type": "password", "required": true }
+  ],
+  "defaultCommands": [
+    {
+      "keyword": "tp",
+      "title": "TimePad",
+      "icon": "⏱️",
+      "fields": { "baseUrl": "http://localhost:8000" }
+    }
+  ]
+}

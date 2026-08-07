@@ -1,4 +1,5 @@
 import type { VutCommand } from './types';
+import { getPluginModule } from './plugins/pluginStore';
 
 export interface MatchResult {
   command: VutCommand;
@@ -67,5 +68,10 @@ export const describeAction = (result: MatchResult): string => {
       return command.action.kind === 'uri' ? command.action.uri : command.action.default.command;
     case 'open_settings':
       return 'Open the Vut settings window';
+    case 'plugin': {
+      const mod = getPluginModule(command.action.pluginId);
+      const ctx = { config: command.action.fields, query };
+      return mod?.describe?.(ctx) ?? (query || command.title);
+    }
   }
 };

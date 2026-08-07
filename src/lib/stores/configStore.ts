@@ -22,6 +22,7 @@ export const settings = writable<VutSettings>({
   darkPaletteId: 'vut-dark',
   autostart: false,
   defaultSearchCommandId: null,
+  seededPluginIds: [],
 });
 
 let currentSettings: VutSettings | null = null;
