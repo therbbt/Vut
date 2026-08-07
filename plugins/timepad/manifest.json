@@ -1,7 +1,7 @@
 {
   "id": "timepad",
   "name": "TimePad",
-  "description": "Control a local TimePad timer. Log in below, then from the search bar: \"start <task>\", \"stop\", \"current\", \"dashboard\".",
+  "description": "Control a local TimePad timer. Log in below, then \"use <project>\" from the search bar to pick a project - start/task need one selected (remembered until you change it). Then: \"start <task>\", \"task <name>\" (or \"start <project>: <task>\"/\"task <project>: <name>\" to use a different project once, which also becomes the new remembered one), \"stop\", \"current\", \"dashboard\", \"project <name>\".",
   "icon": "⏱️",
   "module": "index.js",
   "configSchema": [
