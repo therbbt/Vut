@@ -3,13 +3,15 @@
 
   // Flattens the nested `{ type, kind }` union into one selector value for
   // the form's radio group - simpler to bind a <select> to than a 2-level
-  // discriminated union.
-  export type ActionKind = 'open_url' | 'search' | 'launch_uri' | 'launch_command' | 'open_settings';
+  // discriminated union. A plugin action is `plugin:<id>` so every loaded
+  // plugin gets its own selectable option without extending this type.
+  export type ActionKind = 'open_url' | 'search' | 'launch_uri' | 'launch_command' | 'open_settings' | `plugin:${string}`;
 
   export const actionKindOf = (action: CommandAction): ActionKind => {
     if (action.type === 'open_url') return 'open_url';
     if (action.type === 'search') return 'search';
     if (action.type === 'open_settings') return 'open_settings';
+    if (action.type === 'plugin') return `plugin:${action.pluginId}`;
     return action.kind === 'uri' ? 'launch_uri' : 'launch_command';
   };
 </script>
@@ -18,6 +20,7 @@
   import { emptyCommandSpec, newCommandId } from '../types';
   import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
   import Dropdown from './Dropdown.svelte';
+  import { plugins } from '../plugins/pluginStore';
 
   // undefined = nothing selected (placeholder); null = creating a new
   // command (blank form); a VutCommand = editing that existing command.
@@ -33,6 +36,7 @@
   let searchTemplate = '';
   let browser = '';
   let launchUri = '';
+  let pluginFields: Record<string, string> = {};
   let defaultSpec: CommandSpec = emptyCommandSpec();
   let windowsSpec: CommandSpec | null = null;
   let macosSpec: CommandSpec | null = null;
@@ -54,6 +58,7 @@
     searchTemplate = action?.type === 'search' ? action.urlTemplate : 'https://www.google.com/search?q={query}';
     browser = (action?.type === 'open_url' || action?.type === 'search') && action.browser ? action.browser : '';
     launchUri = action?.type === 'launch_app' && action.kind === 'uri' ? action.uri : '';
+    pluginFields = action?.type === 'plugin' ? { ...action.fields } : {};
     if (action?.type === 'launch_app' && action.kind === 'command') {
       defaultSpec = action.default;
       windowsSpec = action.windows;
@@ -69,6 +74,17 @@
 
   $: load(command);
   $: isNew = editingId === '';
+
+  $: activePluginId = kind.startsWith('plugin:') ? kind.slice('plugin:'.length) : null;
+  $: activePluginManifest = activePluginId ? ($plugins.find((p) => p.id === activePluginId) ?? null) : null;
+  $: actionOptions = [
+    { value: 'open_url', label: 'Open a fixed URL' },
+    { value: 'search', label: 'Search (URL template with {query})' },
+    { value: 'launch_uri', label: 'Launch app via URI scheme' },
+    { value: 'launch_command', label: 'Launch app via executable' },
+    { value: 'open_settings', label: 'Open Vut Settings' },
+    ...$plugins.map((p) => ({ value: `plugin:${p.id}`, label: p.name })),
+  ];
 
   const toSpec = (commandText: string, argsText: string): CommandSpec => ({
     command: commandText.trim(),
@@ -133,6 +149,17 @@
       action = { type: 'launch_app', kind: 'uri', uri: launchUri.trim() };
     } else if (kind === 'open_settings') {
       action = { type: 'open_settings' };
+    } else if (kind.startsWith('plugin:')) {
+      if (!activePluginId || !activePluginManifest) {
+        error = 'This plugin is not loaded.';
+        return;
+      }
+      const missing = activePluginManifest.configSchema.find((f) => f.required && !pluginFields[f.key]?.trim());
+      if (missing) {
+        error = `${missing.label} is required.`;
+        return;
+      }
+      action = { type: 'plugin', pluginId: activePluginId, fields: { ...pluginFields } };
     } else {
       const def = toSpec(defaultSpec.command, defaultArgsText);
       if (!def.command) {
@@ -183,17 +210,7 @@
 
     <label>
       <span>Action</span>
-      <Dropdown
-        options={[
-          { value: 'open_url', label: 'Open a fixed URL' },
-          { value: 'search', label: 'Search (URL template with {query})' },
-          { value: 'launch_uri', label: 'Launch app via URI scheme' },
-          { value: 'launch_command', label: 'Launch app via executable' },
-          { value: 'open_settings', label: 'Open Vut Settings' },
-        ]}
-        value={kind}
-        onChange={(v) => (kind = v as ActionKind)}
-      />
+      <Dropdown options={actionOptions} value={kind} onChange={(v) => (kind = v as ActionKind)} />
     </label>
 
     {#if kind === 'open_url'}
@@ -229,6 +246,24 @@
       <p class="hint">Opened via the OS's registered handler for this scheme.</p>
     {:else if kind === 'open_settings'}
       <p class="hint">Opens this settings window. No additional configuration needed.</p>
+    {:else if kind.startsWith('plugin:')}
+      {#if activePluginManifest}
+        {#if activePluginManifest.description}<p class="hint">{activePluginManifest.description}</p>{/if}
+        {#each activePluginManifest.configSchema as field (field.key)}
+          <label>
+            <span>{field.label}</span>
+            <input
+              type={field.type === 'password' ? 'password' : 'text'}
+              bind:value={pluginFields[field.key]}
+              placeholder={field.placeholder ?? ''}
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </label>
+        {/each}
+      {:else}
+        <p class="error">This plugin isn't loaded (missing, or failed to load at startup).</p>
+      {/if}
     {:else}
       <div class="row two">
         <label>

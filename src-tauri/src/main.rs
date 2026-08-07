@@ -2,6 +2,7 @@
 
 mod config;
 mod launcher;
+mod plugins;
 
 use config::VutConfig;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -232,6 +233,44 @@ fn open_config_file(app: AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+#[command]
+fn list_plugins(app: AppHandle) -> Result<Vec<plugins::PluginManifest>, String> {
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    Ok(plugins::list(&data_dir))
+}
+
+/// Returns the plugin's JS module source as text; the frontend loads it as
+/// a real ES module via a Blob URL (see src/lib/plugins/pluginService.ts).
+/// Keeping this a plain IPC round trip - rather than exposing plugin files
+/// through the asset protocol - means plugin loading needs no new
+/// tauri.conf.json security surface: it's just another Rust-owns-the-fs
+/// command, same shape as load_config/save_config.
+#[command]
+fn read_plugin_module(app: AppHandle, plugin_id: String) -> Result<String, String> {
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    plugins::read_module(&data_dir, &plugin_id)
+}
+
+#[command]
+fn plugins_dir_path(app: AppHandle) -> Result<String, String> {
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    Ok(plugins::plugins_dir(&data_dir).to_string_lossy().to_string())
+}
+
+#[command]
+fn open_plugins_folder(app: AppHandle) -> Result<(), String> {
+    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    // Same "never fail on a fresh install" reasoning as open_config_file -
+    // plugins::list() seeds the bundled plugins (and thus creates the
+    // directory) as a side effect, so calling it here guarantees there's
+    // always somewhere for the OS to open.
+    plugins::list(&data_dir);
+    let path = plugins::plugins_dir(&data_dir);
+    app.opener()
+        .open_path(path.to_string_lossy().to_string(), None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
 /// Stand-ins for the `bg` color of whichever palette is actually active
 /// (see src/lib/theme/palettes.ts) - not an exact match for every palette
 /// variant (there are several dark ones, several light ones), but close
@@ -330,9 +369,14 @@ fn main() {
             save_config,
             config_file_path,
             open_config_file,
+            list_plugins,
+            read_plugin_module,
+            plugins_dir_path,
+            open_plugins_folder,
             show_settings,
             launcher::open_target,
             launcher::launch_app_command,
+            launcher::plugin_http_fetch,
         ])
         .setup(|app| {
             let data_dir = app

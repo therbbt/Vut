@@ -20,6 +20,15 @@ tauri-plugin-process = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 raw-window-handle = "0.6"
+# Already pulled in transitively by tauri-plugin-updater, so this adds no
+# new dependency weight - just a direct name so plugin_http_fetch (see
+# launcher.rs) can use it too. Plugin HTTP calls are proxied through this
+# Rust command instead of the webview's fetch() because the latter is
+# subject to real browser CORS enforcement against whatever arbitrary
+# third-party server a plugin targets; a native client has no such
+# restriction and needs no capability/scope wiring for the same "arbitrary
+# user-configured target" reason open_target bypasses opener's JS binding.
+reqwest = "0.13"
 
 # Only needed for the EWMH _NET_ACTIVE_WINDOW nudge in show_main_window (see
 # the comment there) - X11-specific, and already pulled in transitively by

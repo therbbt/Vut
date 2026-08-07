@@ -15,7 +15,8 @@ export type CommandAction =
       macos: CommandSpec | null;
       linux: CommandSpec | null;
     }
-  | { type: 'open_settings' };
+  | { type: 'open_settings' }
+  | { type: 'plugin'; pluginId: string; fields: Record<string, string> };
 
 export interface VutCommand {
   id: string;
@@ -32,6 +33,9 @@ export interface VutSettings {
   darkPaletteId: string;
   autostart: boolean;
   defaultSearchCommandId: string | null;
+  /** Plugin ids whose defaultCommands have already been seeded once - see
+   * ensureDefaultCommands in lib/plugins/pluginStore.ts. */
+  seededPluginIds: string[];
 }
 
 export interface VutConfig {

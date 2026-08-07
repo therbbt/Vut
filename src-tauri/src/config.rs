@@ -50,6 +50,18 @@ pub enum CommandAction {
     /// `show_settings` instead of the usual open_target/launch_app path.
     #[serde(rename = "open_settings")]
     OpenSettings,
+    /// A plugin-defined action (see src-tauri/src/plugins.rs). One variant
+    /// covers every plugin - `plugin_id` plus the frontend's runtime plugin
+    /// registry is what differentiates behavior, so adding a second or
+    /// third plugin never needs a new variant here. `fields` are the
+    /// per-command values for whatever `configSchema` that plugin's
+    /// manifest.json declares (e.g. a base URL and a token).
+    #[serde(rename = "plugin", rename_all = "camelCase")]
+    Plugin {
+        plugin_id: String,
+        #[serde(default)]
+        fields: std::collections::HashMap<String, String>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -90,6 +102,13 @@ pub struct VutSettings {
     pub autostart: bool,
     #[serde(default)]
     pub default_search_command_id: Option<String>,
+    /// Plugin ids whose defaultCommands have already been seeded once (see
+    /// ensureDefaultCommands in src/lib/plugins/pluginStore.ts) - checked
+    /// instead of "does a command using this plugin currently exist" so
+    /// deleting the auto-added command sticks, rather than it reappearing
+    /// on every launch.
+    #[serde(default)]
+    pub seeded_plugin_ids: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -153,6 +172,7 @@ pub fn default_config() -> VutConfig {
             dark_palette_id: "vut-dark".to_string(),
             autostart: false,
             default_search_command_id: Some("example-g".to_string()),
+            seeded_plugin_ids: Vec::new(),
         },
     }
 }

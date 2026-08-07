@@ -16,6 +16,7 @@ const FALLBACK_CONFIG: VutConfig = {
     darkPaletteId: 'vut-dark',
     autostart: false,
     defaultSearchCommandId: null,
+    seededPluginIds: [],
   },
 };
 

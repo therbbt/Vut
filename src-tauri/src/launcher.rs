@@ -1,4 +1,6 @@
 use crate::config::CommandSpec;
+use serde::Serialize;
+use std::collections::HashMap;
 use tauri::{command, AppHandle};
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_shell::ShellExt;
@@ -54,4 +56,49 @@ pub fn launch_app_command(
         .spawn()
         .map(|_| ())
         .map_err(|e| e.to_string())
+}
+
+#[derive(Serialize)]
+pub struct PluginHttpResponse {
+    status: u16,
+    body: String,
+    headers: HashMap<String, String>,
+}
+
+/// Proxies a plugin's HTTP request through a native client instead of the
+/// webview's fetch(). The target is whatever URL that plugin's own config
+/// (or the user) points it at - a real server can (and TimePad's did) allow
+/// only specific origins via CORS, which a browser enforces against the
+/// webview's fetch() but a native client is never subject to at all. The
+/// frontend never calls this directly; loadPluginModule (see
+/// pluginService.ts) transparently shadows `fetch` inside every loaded
+/// plugin module with a shim that calls this instead, so plugin authors
+/// just write normal fetch() calls.
+#[command]
+pub async fn plugin_http_fetch(
+    url: String,
+    method: String,
+    headers: HashMap<String, String>,
+    body: Option<String>,
+) -> Result<PluginHttpResponse, String> {
+    let client = reqwest::Client::new();
+    let method = reqwest::Method::from_bytes(method.as_bytes()).map_err(|e| e.to_string())?;
+    let mut request = client.request(method, &url);
+    for (key, value) in headers {
+        request = request.header(key, value);
+    }
+    if let Some(body) = body {
+        request = request.body(body);
+    }
+
+    let response = request.send().await.map_err(|e| e.to_string())?;
+    let status = response.status().as_u16();
+    let response_headers = response
+        .headers()
+        .iter()
+        .filter_map(|(name, value)| value.to_str().ok().map(|v| (name.to_string(), v.to_string())))
+        .collect();
+    let body = response.text().await.map_err(|e| e.to_string())?;
+
+    Ok(PluginHttpResponse { status, body, headers: response_headers })
 }
