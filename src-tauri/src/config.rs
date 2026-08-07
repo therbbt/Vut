@@ -132,7 +132,12 @@ fn settings_command() -> VutCommand {
         id: "settings".to_string(),
         keyword: "settings".to_string(),
         title: "Settings".to_string(),
-        icon: Some("⚙️".to_string()),
+        // A Lucide icon, not the "⚙️" emoji this shipped with originally -
+        // emoji glyphs render in their own fixed color regardless of the
+        // `color`/currentColor CSS applied to them, so it stood out instead
+        // of picking up the palette's accent color like every other icon
+        // (Lucide or the plain-letter fallback) already does.
+        icon: Some("lucide:Settings".to_string()),
         action: CommandAction::OpenSettings,
     }
 }

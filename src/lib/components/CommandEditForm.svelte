@@ -20,6 +20,7 @@
   import { emptyCommandSpec, newCommandId } from '../types';
   import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
   import Dropdown from './Dropdown.svelte';
+  import IconPicker from './IconPicker.svelte';
   import { plugins } from '../plugins/pluginStore';
 
   // undefined = nothing selected (placeholder); null = creating a new
@@ -199,7 +200,10 @@
       </label>
       <label>
         <span>Icon (optional)</span>
-        <input bind:value={icon} placeholder="🔖 or leave blank" autocomplete="off" spellcheck="false" />
+        <div class="row-inline">
+          <input bind:value={icon} placeholder="🔖 or leave blank" autocomplete="off" spellcheck="false" />
+          <IconPicker value={icon} onChange={(e) => (icon = e)} />
+        </div>
       </label>
     </div>
 

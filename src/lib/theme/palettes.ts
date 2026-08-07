@@ -44,7 +44,10 @@ export const PALETTES: Palette[] = [
       text: '#ecebe7',
       muted: '#97958d',
       border: 'rgba(255, 255, 255, 0.08)',
-      accent: '#5b9bd5',
+      // Same teal-green FlashPad uses for its "global search" active state
+      // (Footer.svelte's .search-scope-btn.active - #4dd0c8), not the blue
+      // this palette had before.
+      accent: '#4dd0c8',
     },
   },
   {
