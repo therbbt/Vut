@@ -7,6 +7,7 @@
   import type { PluginStatus } from './lib/plugins/types';
   import { matchCommands, describeAction, type MatchResult } from './lib/parser';
   import { runAction } from './lib/services/actionService';
+  import CommandIcon from './lib/components/CommandIcon.svelte';
   import type { VutSettings, VutCommand } from './lib/types';
 
   let query = '';
@@ -66,7 +67,7 @@
   // path, Tab-autocomplete) or a fresh summon starts a new session.
   const clearFeedback = () => (feedback = null);
 
-  const iconLabel = (command: VutCommand): string => (command.icon?.trim() ? command.icon : command.title.charAt(0).toUpperCase() || '?');
+  const titleInitial = (command: VutCommand): string => command.title.charAt(0).toUpperCase() || '?';
 
   const runSelected = async () => {
     const result = results[selectedIndex];
@@ -290,7 +291,7 @@
           on:mouseenter={() => (selectedIndex = index)}
           on:click={() => void runSelected()}
         >
-          <span class="result-icon">{iconLabel(result.command)}</span>
+          <span class="result-icon"><CommandIcon icon={result.command.icon} fallback={titleInitial(result.command)} size={16} /></span>
           <span class="result-text">
             <span class="result-title">{result.command.title}</span>
             <span class="result-subtitle">{describeAction(result)}</span>

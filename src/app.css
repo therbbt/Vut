@@ -16,8 +16,8 @@
   --text: #ecebe7;
   --muted: #97958d;
   --border: rgba(255, 255, 255, 0.08);
-  --accent: #5b9bd5;
-  --accent-soft: rgba(91, 155, 213, 0.16);
+  --accent: #4dd0c8;
+  --accent-soft: rgba(77, 208, 200, 0.16);
 }
 
 * { box-sizing: border-box; }
